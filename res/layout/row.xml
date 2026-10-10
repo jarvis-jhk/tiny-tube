@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="88dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:baselineAligned="false"
+    android:background="?android:attr/selectableItemBackground"
+    android:paddingStart="12dp"
+    android:paddingEnd="4dp"
+    android:paddingTop="7dp"
+    android:paddingBottom="7dp">
+
+    <FrameLayout
+        android:id="@+id/thumb_box"
+        android:layout_width="132dp"
+        android:layout_height="74dp">
+
+        <ImageView
+            android:id="@+id/thumb"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:background="@color/bar"
+            android:contentDescription="@null"/>
+
+        <!-- Watch progress, hugging the bottom edge inside the rounded clip -->
+        <View
+            android:id="@+id/progress"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_gravity="bottom|start"
+            android:background="@color/accent"/>
+
+        <TextView
+            android:id="@+id/dur"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="5dp"
+            android:background="@drawable/pill"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFFFF"/>
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:baselineAligned="false"
+        android:layout_marginStart="11dp">
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textSize="14.5sp"
+            android:lineSpacingExtra="1dp"
+            android:textColor="@color/fg"/>
+
+        <TextView
+            android:id="@+id/chan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:layout_marginTop="3dp"
+            android:textSize="12sp"
+            android:textColor="@color/fg_dim"/>
+
+        <TextView
+            android:id="@+id/meta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textSize="12sp"
+            android:textColor="@color/fg_dim"/>
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/btn_share"
+        android:layout_width="40dp"
+        android:layout_height="46dp"
+        android:padding="9dp"
+        android:scaleType="fitCenter"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_share"
+        android:contentDescription="Share"/>
+
+    <ImageView
+        android:id="@+id/btn_cache"
+        android:layout_width="40dp"
+        android:layout_height="46dp"
+        android:padding="9dp"
+        android:scaleType="fitCenter"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_cache"
+        android:contentDescription="Cache"/>
+
+    <ImageView
+        android:id="@+id/btn_watch"
+        android:layout_width="40dp"
+        android:layout_height="46dp"
+        android:padding="9dp"
+        android:scaleType="fitCenter"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_check"
+        android:contentDescription="Mark watched"/>
+</LinearLayout>

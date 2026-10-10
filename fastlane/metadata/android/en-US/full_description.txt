@@ -1,0 +1,5 @@
+Tiny Tube is a small YouTube client for Android 14 and newer. Search for videos, subscribe to channels, and keep a quiet feed of new uploads. Play videos in a fullscreen landscape player with seeking, speed, brightness, and volume controls. Resume where you left off, or download videos for offline viewing. SponsorBlock segments can be skipped automatically.
+
+The app starts with no subscriptions. Search for a video and long-press its plus button to subscribe to that channel. No account login is supported.
+
+Tiny Tube uses YouTube's network service and SponsorBlock. It is an independent client, unaffiliated with YouTube or Google. Changes to YouTube may interrupt playback until the app is updated.

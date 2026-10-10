@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A 16dp dot inside a 40dp transparent inset: Android sizes and hit-tests the thumb by the
+     drawable's bounds, so the touch/drag target is the full 40dp while only the dot is drawn.
+     (A layer-list item with width/height stretched the dot to the full 40dp, flush with the
+     view's edges, and its rim got trimmed at the ends.) -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="12dp" android:insetRight="12dp"
+    android:insetTop="12dp" android:insetBottom="12dp">
+    <shape android:shape="oval">
+        <solid android:color="@color/accent"/>
+        <size android:width="16dp" android:height="16dp"/>
+    </shape>
+</inset>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Legacy icon, for launchers older than the adaptive-icon support in
+     drawable-anydpi-v26. Same look: full red field, large play symbol. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFCD201F" android:pathData="M0,0 h108 v108 h-108 z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M47,42 L69,54 L47,66 z"/>
+</vector>

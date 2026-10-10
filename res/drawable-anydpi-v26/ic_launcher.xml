@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon: the red is a full-bleed background layer, so the launcher's
+     mask is filled edge to edge whatever shape it uses. A plain vector icon
+     would instead be shrunk onto a launcher-supplied backdrop. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/logo_red"/>
+    <foreground android:drawable="@drawable/ic_launcher_fg"/>
+</adaptive-icon>

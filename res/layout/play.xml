@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <SurfaceView
+        android:id="@+id/surface"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"/>
+
+    <ProgressBar
+        android:id="@+id/loading"
+        android:layout_width="46dp"
+        android:layout_height="46dp"
+        android:layout_gravity="center"
+        android:indeterminateTint="@color/accent"/>
+
+    <TextView
+        android:id="@+id/error"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_margin="32dp"
+        android:gravity="center"
+        android:textColor="@color/fg"
+        android:textSize="14sp"
+        android:visibility="gone"/>
+
+    <!-- Everything below fades in and out together as "the controls". -->
+    <FrameLayout
+        android:id="@+id/controls"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/scrim_bottom"/>
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top"
+            android:paddingStart="20dp"
+            android:paddingEnd="140dp"
+            android:paddingTop="14dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:shadowColor="#CC000000"
+            android:shadowRadius="6"
+            android:textColor="#FFFFFFFF"
+            android:textSize="14sp"/>
+
+        <!-- Shown once a downloaded video has been watched to the end: one big target in the
+             middle, since the controls' corners sit under the system bars. -->
+        <TextView
+            android:id="@+id/btn_uncache"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/btn_pill"
+            android:paddingStart="36dp"
+            android:paddingEnd="36dp"
+            android:paddingTop="18dp"
+            android:paddingBottom="18dp"
+            android:text="Remove download"
+            android:textColor="#FFFFFFFF"
+            android:textSize="18sp"
+            android:visibility="gone"/>
+
+        <LinearLayout
+            android:id="@+id/bottom_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="6dp">
+
+            <TextView
+                android:id="@+id/pos"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="52dp"
+                android:textColor="#FFFFFFFF"
+                android:textSize="12sp"/>
+
+            <SeekBar
+                android:id="@+id/seek"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:maxHeight="3dp"
+                android:minHeight="3dp"
+                android:splitTrack="false"
+                android:thumb="@drawable/seek_thumb"
+                android:progressDrawable="@drawable/seek_track"/>
+
+            <TextView
+                android:id="@+id/len"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="52dp"
+                android:gravity="end"
+                android:textColor="#FFFFFFFF"
+                android:textSize="12sp"/>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Gesture feedback: volume / brightness / speed -->
+    <TextView
+        android:id="@+id/hud"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/hud_bg"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:textColor="#FFFFFFFF"
+        android:textSize="17sp"
+        android:visibility="gone"/>
+</FrameLayout>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive-icon foreground: just the play symbol. Only the inner 72x72 of the
+     108x108 canvas is guaranteed visible once a launcher masks the icon, so the
+     triangle stays well inside that, and is nudged right to sit optically centred. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M47,42 L69,54 L47,66 z"/>
+</vector>

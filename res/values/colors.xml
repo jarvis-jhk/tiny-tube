@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FF0F0F0F</color>
+    <color name="bar">#FF1B1B1B</color>
+    <color name="fg">#FFE8E8E8</color>
+    <color name="fg_dim">#FF9A9A9A</color>
+    <color name="accent">#FFCC0000</color>
+    <color name="warn">#FFE0A63A</color>
+    <color name="scrim">#B3000000</color>
+    <!-- Launcher icon background: NewPipe's logo red, taken from its own
+         ic_launcher_background in PipePipeClient/app/src/main/res/values/colors.xml. -->
+    <color name="logo_red">#FFCD201F</color>
+</resources>

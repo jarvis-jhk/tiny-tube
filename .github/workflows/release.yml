@@ -1,0 +1,49 @@
+name: Release APK
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: public-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: public-release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate reviewed snapshot and increasing version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -s PUBLIC_REVIEW.md
+          VERSION="${GITHUB_REF_NAME#v}"
+          [[ "$VERSION" =~ ^[1-9][0-9]*$ ]]
+          test "$VERSION" -le 2100000000
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[].tag_name' > /tmp/release-tags
+          LAST=$(sed -n 's/^v\([0-9][0-9]*\)$/\1/p' /tmp/release-tags | sort -n | tail -1)
+          test "$VERSION" -gt "${LAST:-0}"
+          echo "TINYTUBE_VERSION_CODE=$VERSION" >> "$GITHUB_ENV"
+      - name: Restore stable release key
+        env:
+          SIGNING_KEY_B64: ${{ secrets.SIGNING_KEY_B64 }}
+        run: |
+          test -n "$SIGNING_KEY_B64"
+          printf '%s' "$SIGNING_KEY_B64" | base64 -d > keystore.jks
+      - name: Build
+        run: ./build.sh
+      - name: Verify release signature and retain diagnostics
+        run: |
+          .tools/sdk/build-tools/35.0.0/apksigner verify --verbose tiny-tube.apk
+          cp mapping.txt "mapping-${TINYTUBE_VERSION_CODE}.txt"
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" tiny-tube.apk "mapping-${TINYTUBE_VERSION_CODE}.txt" --generate-notes --verify-tag

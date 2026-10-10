@@ -1,0 +1,5 @@
+.tools/
+*.apk
+*.idsig
+keystore.jks
+mapping.txt
