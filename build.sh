@@ -89,7 +89,9 @@ find "$OUT/classes" -name '*.class' > "$OUT/classes.txt"
 java -cp "$BT/lib/d8.jar" com.android.tools.r8.R8 \
   --release --min-api $MIN_SDK --lib "$ANDROID_JAR" \
   --pg-conf proguard.cfg --output "$OUT/dex" @"$OUT/classes.txt"
-(cd "$OUT/dex" && jar -uf "$OUT/unaligned.apk" classes.dex)
+# A fixed timestamp keeps the APK byte-for-byte reproducible.
+touch -d @0 "$OUT/dex/classes.dex"
+(cd "$OUT/dex" && TZ=UTC jar -uf "$OUT/unaligned.apk" classes.dex)
 
 echo ">> zipalign + sign"
 "$BT/zipalign" -f -p 4 "$OUT/unaligned.apk" "$OUT/aligned.apk"
@@ -98,7 +100,7 @@ echo ">> zipalign + sign"
 if [ "${TINYTUBE_UNSIGNED:-}" = 1 ]; then
   cp "$OUT/aligned.apk" "$ROOT/tiny-tube.apk"
 else
-  "$BT/apksigner" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
+  "$BT/apksigner" sign --alignment-preserved --ks "$KS" --ks-pass pass:android --key-pass pass:android \
     --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true \
     --out "$ROOT/tiny-tube.apk" "$OUT/aligned.apk"
 fi
