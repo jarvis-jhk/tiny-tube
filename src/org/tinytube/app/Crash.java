@@ -4,11 +4,11 @@ import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.os.Build;
 
-/** Optional crash reporting for private builds. */
+/** Optional crash reporting, off while REPORT_URL is empty. */
 final class Crash {
     private Crash() {}
 
-    /** Empty in public builds. */
+    /** Empty: no reports are sent. */
     private static final String REPORT_URL =
             "";
 
