@@ -269,6 +269,7 @@ final class Heads {
     }
 
     private static void run(final Context app, final List<Vid> only, final boolean sweep) {
+        if (DataSync.isReceiver()) return;
         Yt.BACKGROUND.execute(new Runnable() {
             @Override public void run() {
                 List<Vid> vids = only != null ? only : Db.get(app).unwatchedWithPos();

@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.app.ForegroundServiceStartNotAllowedException;
 import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.WifiManager;
@@ -39,14 +40,17 @@ public final class Cacher extends Service {
     private static final String CHANNEL = "downloads";
     private static final int NOTE_ID = 1;
 
-    /** Quick retries before parking the download for a day or more. */
+    /** Quick retries before parking the download for {@link #DEFER_MS}. */
     private static final int MAX_ATTEMPTS = 3;
     /**
      * Waits between attempts. Long on purpose: a download that failed is usually waiting on the
      * network coming back or YouTube calming down, and hammering it helps neither.
      */
     private static final long[] BACKOFF_MS = {10_000, 30_000};
-    private static final long DAY_MS = 86_400_000L;
+    /** How long a failed round parks a download: every 12 h, never longer (the maintainer, 2026-10-12). */
+    private static final long DEFER_MS = 12 * 3_600_000L;
+    /** Failed rounds after which a download has been failing for three days, and is reported. */
+    private static final int REPORT_ROUNDS = 7;
     /**
      * A download YouTube is refusing waits only this long: what fixes a refusal is a new visitor
      * identity, of which {@link Ident#refreshAfter403} allows four an hour, and not days.
@@ -156,12 +160,19 @@ public final class Cacher extends Service {
 
     /** @param auto started by auto-caching: a download refused for space says nothing */
     private static void cache(Context ctx, String videoId, boolean auto) {
+        if (DataSync.isReceiver()) return;
         Db.get(ctx).clearCacheRetry(videoId);
         mark(ctx, videoId, Db.CACHE_BUSY);
         try {
             ctx.startForegroundService(new Intent(ctx, Cacher.class)
                     .setAction(ACTION_CACHE).putExtra("id", videoId).putExtra("auto", auto));
         } catch (RuntimeException e) {
+            if (e instanceof ForegroundServiceStartNotAllowedException) {
+                // Android's background/time quota is temporary. Keep BUSY and the partials
+                // for resumeInterrupted; refusing a start is not a failed download round.
+                Dbg.i("cache: foreground start deferred by Android");
+                return;
+            }
             // Nothing will pick this up, so it must not stay BUSY: the reconcile only ever
             // starts a video that is CACHE_NONE, so a stuck row would never be retried.
             mark(ctx, videoId, Db.CACHE_NONE);
@@ -180,6 +191,7 @@ public final class Cacher extends Service {
      * the row back -- and that is exactly what has to be started again.
      */
     static void resumeInterrupted(Context ctx) {
+        if (DataSync.isReceiver()) return;
         final Context app = ctx.getApplicationContext();
         new Thread(new Runnable() {
             @Override public void run() {
@@ -260,6 +272,7 @@ public final class Cacher extends Service {
 
     /** Flips a channel's auto-caching; if it is now on, starts the downloads that implies. */
     static boolean toggleAuto(Context ctx, String chanId) {
+        if (DataSync.isReceiver()) return false;
         Db db = Db.get(ctx);
         boolean on = !db.isAuto(chanId);
         db.setAuto(chanId, on);
@@ -277,14 +290,16 @@ public final class Cacher extends Service {
      * {@link Db#CACHE_SKIP} and left alone, or it would simply come back.
      */
     static void reconcileAuto(Context ctx) {
+        if (DataSync.isReceiver()) return;
         final Context app = ctx.getApplicationContext();
         new Thread(new Runnable() {
             @Override public void run() {
                 if (!Sync.unmetered(app)) return;
                 Db db = Db.get(app);
-                for (String chan : db.autoChannels()) {
+                List<String> channels = db.autoChannels();
+                for (String chan : channels) {
                     try {
-                        reconcileChannel(app, db, chan);
+                        reconcileChannel(app, db, chan, channels.size() == 1);
                     } catch (IOException e) {
                         Dbg.i("cache: auto for " + db.chanName(chan) + " stopped: " + e);
                     } catch (IllegalStateException e) {
@@ -298,10 +313,12 @@ public final class Cacher extends Service {
 
     /**
      * One channel's share, oldest first: a video over {@link #BIG} is the channel's only
-     * download, and none starts without {@link #room} for it. Sizes come from resolving the
+     * download unless it is the only auto channel with eligible videos left. None starts
+     * without {@link #room} for it. Sizes come from resolving the
      * streams, which is cached and for the top of the feed already done by priming.
      */
-    private static void reconcileChannel(Context app, Db db, String chan) throws IOException {
+    private static void reconcileChannel(Context app, Db db, String chan, boolean onlyChannel)
+            throws IOException {
         List<Vid> oldest = db.autoOldest(chan, AUTO_KEEP);
         for (int i = 0; i < oldest.size(); i++) {
             Vid v = oldest.get(i);
@@ -328,7 +345,7 @@ public final class Cacher extends Service {
                         + db.chanName(chan));
                 cache(app, v.id, true);
             }
-            if (size > BIG) return;
+            if (size > BIG && !onlyChannel) return;
         }
     }
 
@@ -343,7 +360,7 @@ public final class Cacher extends Service {
     private static final long MIN_FREE = 1536L << 20;
     /** Nor if finishing it would leave less than this: a big video must not fill the disk. */
     private static final long MIN_LEFT = 512L << 20;
-    /** An auto-cached video over this size is the only one its channel gets. */
+    /** A video over this size is its channel's only auto download while other channels remain. */
     private static final long BIG = 1L << 30;
     /**
      * Bytes each running download still has to write. Free space alone does not see them: two
@@ -481,9 +498,19 @@ public final class Cacher extends Service {
         latestStartId = startId;
         String action = intent == null ? null : intent.getAction();
         final String id = intent == null ? null : intent.getStringExtra("id");
+        if (!DataSync.isReceiver() && id != null && ACTION_CANCEL.equals(action)) {
+            CANCELLED.add(id);           // the caller has already set the row's state
+            stopIfIdle();
+            return START_NOT_STICKY;
+        }
+        if (!enterForeground()) return START_NOT_STICKY;
+        if (DataSync.isReceiver()) {
+            // Satisfy startForegroundService even for an old sticky/service restart.
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         if (id == null) {
             // Restarted by the system after being killed: pick up whatever was mid-download.
-            startForeground(NOTE_ID, note("Downloading", "Resuming…", 0));
             int resumed = 0;
             for (String pending : Db.get(this).dueDownloads()) {
                 enqueue(pending, true);
@@ -493,15 +520,23 @@ public final class Cacher extends Service {
             return START_STICKY;
         }
 
-        if (ACTION_CANCEL.equals(action)) {
-            CANCELLED.add(id);           // the caller has already set the row's state
-            stopIfIdle();
-            return START_NOT_STICKY;
-        }
-
-        startForeground(NOTE_ID, note("Downloading", "Starting…", 0));
         enqueue(id, intent.getBooleanExtra("auto", false));
         return START_STICKY;
+    }
+
+    private boolean enterForeground() {
+        if (stopping) { stopSelf(); return false; }
+        try {
+            startForeground(NOTE_ID, note("Downloading", "Starting…", 0));
+            return true;
+        } catch (ForegroundServiceStartNotAllowedException e) {
+            // Android 15 can accept startForegroundService but refuse this promotion after
+            // the dataSync allowance is exhausted. Stop without a sticky restart or touching
+            // BUSY/retry rows: the next permitted launch/pass resumes the same partial files.
+            Dbg.i("cache: foreground promotion deferred by Android");
+            onTimeout(latestStartId, 0);
+            return false;
+        }
     }
 
     /** Runs one video's download, retrying with a long back-off before giving up. */
@@ -593,16 +628,15 @@ public final class Cacher extends Service {
                         return;
                     }
                     Db db = Db.get(this);
-                    int prior = db.retryRounds(id);
                     boolean forbidden = e.getMessage() != null
                             && e.getMessage().contains("HTTP 403");
-                    long delay = forbidden ? FORBIDDEN_DEFER_MS : Math.min(3, prior + 1) * DAY_MS;
+                    long delay = forbidden ? FORBIDDEN_DEFER_MS : DEFER_MS;
                     int rounds = db.deferCache(id, System.currentTimeMillis() + delay);
                     Dbg.i("cache: deferring " + id + " for " + (delay / 60_000)
                             + " min after " + e);
                     if (rounds == 1 && forbidden)
                         Crash.reportDownload(this, "Download still forbidden after retry", e);
-                    if (rounds == 3 && !forbidden) Crash.reportDownload(this,
+                    if (rounds == REPORT_ROUNDS && !forbidden) Crash.reportDownload(this,
                             "Download still failing after three days", e);
                     return;
                 }

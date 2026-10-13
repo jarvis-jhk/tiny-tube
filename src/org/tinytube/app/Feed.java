@@ -179,6 +179,7 @@ public final class Feed extends Activity {
      * and cheap once done: the results live in Yt's cache until the URLs expire.
      */
     private void prime() {
+        if (DataSync.isReceiver()) return;
         if ((view != Db.VIEW_READY && view != Db.VIEW_UNWATCHED) || !Sync.online(this)) return;
         boolean prepare = Sync.unmetered(this);
         int primed = 0;
@@ -535,6 +536,10 @@ public final class Feed extends Activity {
                 return true;
             }
             if (v != cache) return false;
+            if (DataSync.isReceiver()) {
+                toast("Downloads disabled on this device");
+                return true;
+            }
             boolean on = Cacher.toggleAuto(Feed.this, vid.chanId);
             toast(on ? "Auto-caching " + vid.chan + ": its two oldest unwatched videos"
                     + (Sync.unmetered(Feed.this) ? "" : " (downloads on Wi-Fi)")
@@ -626,6 +631,10 @@ public final class Feed extends Activity {
                     vid.cache = Db.CACHE_NONE;
                     toast("Download cancelled");
                 } else {
+                    if (DataSync.isReceiver()) {
+                        toast("Downloads disabled on this device");
+                        return;
+                    }
                     Cacher.cache(Feed.this, vid.id);
                     vid.cache = Db.CACHE_BUSY;
                     toast("Downloading…");
@@ -647,7 +656,7 @@ public final class Feed extends Activity {
         }
         // How far in you already are. Only worth saying when it is a real position, not the few
         // seconds a mis-tap leaves behind.
-        if (v.pos > 15000) {
+        if (v.pos > Db.STARTED_MS) {
             if (sb.length() > 0) sb.append("  •  ");
             sb.append(clock(v.pos / 1000)).append(" watched");
         }

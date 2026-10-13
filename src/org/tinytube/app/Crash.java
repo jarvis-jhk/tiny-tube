@@ -34,11 +34,7 @@ final class Crash {
         if (REPORT_URL.isEmpty()) return;
         // Exception messages may contain video URLs, titles, or request data.
         // Class names and stack frames identify the failure without sending them.
-        StringBuilder trace = new StringBuilder(error.getClass().getName());
-        for (StackTraceElement frame : error.getStackTrace()) {
-            trace.append("\n at ").append(frame);
-            if (trace.length() >= MAX_TRACE) break;
-        }
+        String trace = trace(error);
         String detail = "thread " + thread.getId() + "\n" + trace;
         if (detail.length() > MAX_TRACE) detail = detail.substring(0, MAX_TRACE);
 
@@ -65,6 +61,25 @@ final class Crash {
             sender.join(JOIN_MS);
         } catch (InterruptedException ignored) {
         }
+    }
+
+    /** Framework wrappers often hide the real fault in a cause. Never include messages. */
+    private static String trace(Throwable error) {
+        StringBuilder trace = new StringBuilder();
+        java.util.Set<Throwable> seen = java.util.Collections.newSetFromMap(
+                new java.util.IdentityHashMap<Throwable, Boolean>());
+        for (Throwable cause = error; cause != null && seen.add(cause); cause = cause.getCause()) {
+            if (trace.length() > 0) trace.append("\nCaused by: ");
+            trace.append(cause.getClass().getName());
+            // Reserve space for nested causes even when a framework wrapper has a long stack.
+            StackTraceElement[] frames = cause.getStackTrace();
+            for (int i = 0; i < Math.min(frames.length, 12); i++) {
+                trace.append("\n at ").append(frames[i]);
+                if (trace.length() >= MAX_TRACE) break;
+            }
+            if (trace.length() >= MAX_TRACE) break;
+        }
+        return trace.substring(0, Math.min(trace.length(), MAX_TRACE));
     }
 
     /** Background jobs can fail without crashing; report only a scrubbed failure category. */

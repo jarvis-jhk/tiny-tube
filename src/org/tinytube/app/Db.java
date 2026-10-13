@@ -46,6 +46,20 @@ final class Db extends SQLiteOpenHelper {
     Db(Context ctx, String path) { super(ctx, path, null, VERSION); }
 
     @Override
+    public void onOpen(SQLiteDatabase db) {
+        // Also repairs a tablet already synced by an older build, even if the relay hash
+        // has not changed. Keep completed local media and all watch/resume state.
+        if (!DataSync.isReceiver()) return;
+        db.beginTransaction();
+        try {
+            db.execSQL("DELETE FROM auto");
+            db.execSQL("UPDATE state SET cache=0 WHERE cache=1");
+            db.execSQL("DELETE FROM retry");
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
+    }
+
+    @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE vid ("
                 + "id TEXT PRIMARY KEY, chan_id TEXT, chan TEXT, title TEXT,"
@@ -170,8 +184,13 @@ final class Db extends SQLiteOpenHelper {
         }
     }
 
+    /** Auto channels with videos left to keep; empty, watched and skipped queues do not count. */
     synchronized List<String> autoChannels() {
-        Cursor c = getReadableDatabase().rawQuery("SELECT chan_id FROM auto", null);
+        Cursor c = getReadableDatabase().rawQuery(
+                "SELECT a.chan_id FROM auto a WHERE EXISTS"
+                        + " (SELECT 1 FROM vid v LEFT JOIN state s ON s.id=v.id"
+                        + " WHERE v.chan_id=a.chan_id AND IFNULL(s.watched,0)=0"
+                        + " AND IFNULL(s.cache,0)!=" + CACHE_SKIP + ")", null);
         List<String> out = new ArrayList<>();
         try { while (c.moveToNext()) out.add(c.getString(0)); } finally { c.close(); }
         return out;
@@ -383,6 +402,9 @@ final class Db extends SQLiteOpenHelper {
     /** Feed views, in filter-button order after the online default. */
     static final int VIEW_UNWATCHED = 0, VIEW_ALL = 1, VIEW_OFFLINE = 2, VIEW_READY = 3;
 
+    /** A resume position past this is a video begun, not the few seconds a mis-tap leaves. */
+    static final int STARTED_MS = 15000;
+
     /**
      * The feed, newest first.
      *
@@ -390,8 +412,8 @@ final class Db extends SQLiteOpenHelper {
      * watched. That is a deliberate rule -- an unwatched video disappearing on its own would be
      * indistinguishable from having missed it.
      *
-     * @param view {@link #VIEW_READY}: downloaded videos and unwatched videos outside auto-cache
-     *             channels; {@link #VIEW_UNWATCHED}: watched videos are hidden, except ones that are still
+     * @param view {@link #VIEW_READY}: downloaded videos, unwatched videos outside auto-cache
+     *             channels, and begun unwatched ones inside them (the maintainer, 2026-10-12); {@link #VIEW_UNWATCHED}: watched videos are hidden, except ones that are still
      *             downloaded, which stay in view, dimmed, until the download is removed;
      *             {@link #VIEW_ALL}: everything; {@link #VIEW_OFFLINE}: downloaded videos only,
      *             the ones that play with no network.
@@ -400,8 +422,8 @@ final class Db extends SQLiteOpenHelper {
         String where = view == VIEW_ALL ? ""
                 : view == VIEW_OFFLINE ? " WHERE IFNULL(s.cache,0) = " + CACHE_DONE
                 : view == VIEW_READY ? " WHERE IFNULL(s.cache,0) = " + CACHE_DONE
-                        + " OR (IFNULL(s.watched,0) = 0 AND NOT EXISTS"
-                        + "(SELECT 1 FROM auto a WHERE a.chan_id = v.chan_id))"
+                        + " OR (IFNULL(s.watched,0) = 0 AND (IFNULL(s.pos,0) > " + STARTED_MS
+                        + " OR NOT EXISTS(SELECT 1 FROM auto a WHERE a.chan_id = v.chan_id)))"
                 : " WHERE IFNULL(s.watched,0) = 0 OR IFNULL(s.cache,0) IN ("
                         + CACHE_BUSY + "," + CACHE_DONE + ")";
         String sql = "SELECT v.id, v.chan_id, v.chan, v.title, v.dur, v.pub, v.views, v.thumb,"
@@ -480,12 +502,6 @@ final class Db extends SQLiteOpenHelper {
                 new Object[]{id, at});
         Cursor c = db.rawQuery("SELECT rounds FROM retry WHERE id=?", new String[]{id});
         try { return c.moveToFirst() ? c.getInt(0) : 1; } finally { c.close(); }
-    }
-
-    synchronized int retryRounds(String id) {
-        Cursor c = getReadableDatabase().rawQuery("SELECT rounds FROM retry WHERE id=?",
-                new String[]{id});
-        try { return c.moveToFirst() ? c.getInt(0) : 0; } finally { c.close(); }
     }
 
     /** Makes every deferred download due now; how many were waiting. */
